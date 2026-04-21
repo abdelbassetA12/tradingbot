@@ -1,6 +1,3 @@
-
-
-
 require("dotenv").config();
 
 const express = require("express");
@@ -20,15 +17,15 @@ const { run } = require("./testnet/runner");
 const app = express();
 const server = http.createServer(app);
 
-// Middleware
+// ================= MIDDLEWARE =================
 app.use(cors());
 app.use(express.json());
 
-// Config
+// ================= CONFIG =================
 const PORT = process.env.PORT || 5000;
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
 
-// Axios instance (أفضل)
+// ================= AXIOS =================
 const api = axios.create({
   baseURL: "https://api.binance.com",
   timeout: 10000,
@@ -36,7 +33,7 @@ const api = axios.create({
 
 // ================= HELPERS =================
 
-// retry logic
+// retry logic (موجود ولكن ما كتستعملوش حاليا)
 async function fetchWithRetry(url, retries = 3) {
   try {
     return await api.get(url);
@@ -50,8 +47,8 @@ async function fetchWithRetry(url, retries = 3) {
 // جلب البيانات
 async function getData(symbol, interval = "15m", limit = 200) {
   try {
-    const res = await fetchWithRetry(
-      `/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    const res = await axios.get(
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
     );
 
     return res.data.map(c => ({
@@ -62,24 +59,23 @@ async function getData(symbol, interval = "15m", limit = 200) {
       close: +c[4],
       volume: +c[5]
     }));
+
   } catch (err) {
-    console.error(`❌ Error fetching ${symbol}:`, err.message);
+    console.log("❌ Binance error:", err.message);
     return [];
   }
 }
 
 // ================= ROUTES =================
-
 app.use("/api", convertRoute);
 app.use("/api/testnet", testnetRoutes);
 
-// Health check (مهم ل Render)
+// Health check
 app.get("/", (req, res) => {
   res.send("🚀 API is running");
 });
 
 // ================= SIGNALS =================
-
 app.get("/signals", async (req, res) => {
   try {
     const results = await Promise.all(
@@ -87,10 +83,7 @@ app.get("/signals", async (req, res) => {
         const data = await getData(symbol);
         const analysis = generateSignal(data);
 
-        return {
-          symbol,
-          ...analysis
-        };
+        return { symbol, ...analysis };
       })
     );
 
@@ -102,7 +95,6 @@ app.get("/signals", async (req, res) => {
 });
 
 // ================= BACKTEST =================
-
 app.get("/replay", async (req, res) => {
   try {
     const symbol = req.query.symbol || "BTCUSDT";
@@ -119,7 +111,6 @@ app.get("/replay", async (req, res) => {
 });
 
 // ================= SIGNAL REPLAY =================
-
 app.get("/signals-replay", async (req, res) => {
   try {
     const symbol = req.query.symbol || "BTCUSDT";
@@ -139,37 +130,26 @@ app.get("/signals-replay", async (req, res) => {
   }
 });
 
-// ================= START BOT =================
-
-// مهم: ما تخليش البوت يضرب Render idle
-setTimeout(() => {
-  run(SYMBOLS);
-}, 5000);
-
 // ================= START SERVER =================
-
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+
+  // ================= SELF PING =================
+  const APP_URL = process.env.APP_URL;
+
+  if (APP_URL) {
+    setInterval(async () => {
+      try {
+        await axios.get(APP_URL);
+        console.log("🔄 Self ping sent");
+      } catch (err) {
+        console.log("❌ Self ping failed:", err.message);
+      }
+    }, 10 * 60 * 1000);
+  }
+
+  // ================= BOT START =================
+  setTimeout(() => {
+    run(SYMBOLS);
+  }, 5000);
 });
-
-const APP_URL = process.env.APP_URL;
-
-if (APP_URL) {
-  setInterval(async () => {
-    try {
-      await axios.get(APP_URL);
-      console.log("🔄 Self ping sent");
-    } catch (err) {
-      console.log("❌ Self ping failed:", err.message);
-    }
-  }, 10 * 60 * 1000); // كل 10 دقائق
-}
-
-
-
-
-
-
-
-
-
