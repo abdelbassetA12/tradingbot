@@ -14,6 +14,9 @@ const convertRoute = require("./testnet/convert");
 const testnetRoutes = require("./testnet/routes");
 const { run } = require("./testnet/runner");
 
+// 👇 WebSocket module (اللي انشأت)
+const { startWS, getCandles } = require("./market/ws");
+
 const app = express();
 const server = http.createServer(app);
 
@@ -25,57 +28,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
 
-// ================= AXIOS =================
-const api = axios.create({
-  baseURL: "https://api.binance.com",
-  timeout: 10000,
-});
-
-// ================= HELPERS =================
-
-// retry logic (موجود ولكن ما كتستعملوش حاليا)
-async function fetchWithRetry(url, retries = 3) {
-  try {
-    return await api.get(url);
-  } catch (err) {
-    if (retries === 0) throw err;
-    console.log("🔁 Retry...", url);
-    return fetchWithRetry(url, retries - 1);
-  }
-}
-
-async function getData(symbol, interval = "15m", limit = 200) {
-  try {
-    const urls = [
-      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-      `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-      `https://api1.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-    ];
-
-    for (let url of urls) {
-      try {
-        const res = await axios.get(url, { timeout: 8000 });
-
-        return res.data.map(c => ({
-          time: c[0],
-          open: +c[1],
-          high: +c[2],
-          low: +c[3],
-          close: +c[4],
-          volume: +c[5]
-        }));
-      } catch (e) {
-        console.log("⚠️ failed:", url);
-      }
-    }
-
-    return [];
-
-  } catch (err) {
-    console.log("❌ All APIs failed:", err.message);
-    return [];
-  }
-}
 // ================= ROUTES =================
 app.use("/api", convertRoute);
 app.use("/api/testnet", testnetRoutes);
@@ -85,12 +37,31 @@ app.get("/", (req, res) => {
   res.send("🚀 API is running");
 });
 
-// ================= SIGNALS =================
+// ================= SIGNALS (Hybrid: WS + fallback) =================
 app.get("/signals", async (req, res) => {
   try {
     const results = await Promise.all(
       SYMBOLS.map(async (symbol) => {
-        const data = await getData(symbol);
+
+        // 👇 نحاولو WebSocket أولاً
+        let data = getCandles(symbol.toLowerCase());
+
+        // fallback إلى REST إلا مازال ما كاينش data
+        if (!data.length) {
+          const response = await axios.get(
+            `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=15m&limit=200`
+          );
+
+          data = response.data.map(c => ({
+            time: c[0],
+            open: +c[1],
+            high: +c[2],
+            low: +c[3],
+            close: +c[4],
+            volume: +c[5]
+          }));
+        }
+
         const analysis = generateSignal(data);
 
         return { symbol, ...analysis };
@@ -98,6 +69,7 @@ app.get("/signals", async (req, res) => {
     );
 
     res.json(results);
+
   } catch (err) {
     console.error("❌ Signals error:", err.message);
     res.status(500).json({ error: "Failed to fetch signals" });
@@ -110,10 +82,23 @@ app.get("/replay", async (req, res) => {
     const symbol = req.query.symbol || "BTCUSDT";
     const interval = req.query.interval || "15m";
 
-    const data = await getData(symbol, interval, 1000);
-    const result = replayBacktest(data);
+    const data = await axios.get(
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
+    );
+
+    const formatted = data.data.map(c => ({
+      time: c[0],
+      open: +c[1],
+      high: +c[2],
+      low: +c[3],
+      close: +c[4],
+      volume: +c[5]
+    }));
+
+    const result = replayBacktest(formatted);
 
     res.json(result);
+
   } catch (err) {
     console.error("❌ Replay error:", err.message);
     res.status(500).json({ error: err.message });
@@ -126,8 +111,20 @@ app.get("/signals-replay", async (req, res) => {
     const symbol = req.query.symbol || "BTCUSDT";
     const interval = req.query.interval || "15m";
 
-    const data = await getData(symbol, interval, 1000);
-    const signals = replaySignals(data);
+    const data = await axios.get(
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
+    );
+
+    const formatted = data.data.map(c => ({
+      time: c[0],
+      open: +c[1],
+      high: +c[2],
+      low: +c[3],
+      close: +c[4],
+      volume: +c[5]
+    }));
+
+    const signals = replaySignals(formatted);
 
     res.json({
       total: signals.length,
@@ -162,4 +159,9 @@ server.listen(PORT, () => {
   setTimeout(() => {
     run(SYMBOLS);
   }, 5000);
+
+  // ================= START WEBSOCKET =================
+  startWS("btcusdt", "15m");
+  startWS("ethusdt", "15m");
+  startWS("solusdt", "15m");
 });
