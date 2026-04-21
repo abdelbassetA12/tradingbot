@@ -44,28 +44,38 @@ async function fetchWithRetry(url, retries = 3) {
   }
 }
 
-// جلب البيانات
 async function getData(symbol, interval = "15m", limit = 200) {
   try {
-    const res = await axios.get(
-      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-    );
+    const urls = [
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      `https://api1.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    ];
 
-    return res.data.map(c => ({
-      time: c[0],
-      open: +c[1],
-      high: +c[2],
-      low: +c[3],
-      close: +c[4],
-      volume: +c[5]
-    }));
+    for (let url of urls) {
+      try {
+        const res = await axios.get(url, { timeout: 8000 });
+
+        return res.data.map(c => ({
+          time: c[0],
+          open: +c[1],
+          high: +c[2],
+          low: +c[3],
+          close: +c[4],
+          volume: +c[5]
+        }));
+      } catch (e) {
+        console.log("⚠️ failed:", url);
+      }
+    }
+
+    return [];
 
   } catch (err) {
-    console.log("❌ Binance error:", err.message);
+    console.log("❌ All APIs failed:", err.message);
     return [];
   }
 }
-
 // ================= ROUTES =================
 app.use("/api", convertRoute);
 app.use("/api/testnet", testnetRoutes);
