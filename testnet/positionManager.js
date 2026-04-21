@@ -1,6 +1,6 @@
 
 
-const { marketOrder } = require("./binanceClient");
+//const { marketOrder } = require("./binanceClient");
 
 let trades = [];
 let activeTrades = {};
@@ -9,6 +9,7 @@ async function updateTrades(candle, trade) {
   if (!trade) return null;
 
   // 🎯 TP HIT
+  /*
   if (candle.high >= trade.takeProfit) {
     try {
       console.log("🚀 SELLING at TP...");
@@ -32,7 +33,7 @@ async function updateTrades(candle, trade) {
 
     return null;
   }
-
+  */
   return trade;
 }
 

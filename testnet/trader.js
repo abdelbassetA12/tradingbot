@@ -1,5 +1,5 @@
 
-const { marketOrder, getAccount } = require("./binanceClient");
+const { marketOrder, getAccount, takeProfitOrder } = require("./binanceClient");
 const { generateSignal } = require("./strategy");
 const { openTrade, getActiveTrade } = require("./positionManager");
 const axios = require("axios");
@@ -32,7 +32,7 @@ async function process(symbol, candles) {
     let quantity = (freeUSDT * 0.95) / trade.entry;
 
     if (quantity < minQty) {
-      console.error("⚠️ أقل من minQty");
+      //console.error("⚠️ أقل من minQty");
       return;
     }
 
@@ -41,6 +41,13 @@ async function process(symbol, candles) {
     console.log("✅ كمية الشراء:", quantity);
 
     const order = await marketOrder(symbol, "BUY", quantity);
+    
+//جديد ل pt limit order
+    await takeProfitOrder(
+  symbol,
+  quantity,
+  trade.takeProfit
+);
 
     const newTrade = {
       symbol,

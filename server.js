@@ -1,213 +1,175 @@
+
+
+
 require("dotenv").config();
+
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const http = require("http");
 
-
-
-const mongoose = require('mongoose');
-
+// Modules
+const { replaySignals } = require("./signalReplay");
 const { generateSignal } = require("./strategy");
-
-
-
-   
+const { replayBacktest } = require("./backtest");
 
 const convertRoute = require("./testnet/convert");
 const testnetRoutes = require("./testnet/routes");
 const { run } = require("./testnet/runner");
 
-
-
-
-
 const app = express();
+const server = http.createServer(app);
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-
+// Config
 const PORT = process.env.PORT || 5000;
-
-// 🔥 socket
-const server = http.createServer(app);
-
-// العملات
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
 
-// 📊 جلب البيانات
-async function getData(symbol, interval = "15m", limit = 200) {
-  const res = await axios.get(
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-  );
+// Axios instance (أفضل)
+const api = axios.create({
+  baseURL: "https://api.binance.com",
+  timeout: 10000,
+});
 
-  return res.data.map(c => ({
-    time: c[0],   // ✅ تاريخ ووقت الكاندل الحقيقي من Binance
-    open: +c[1],
-    high: +c[2],
-    low: +c[3],
-    close: +c[4],
-    volume: +c[5]
-  }));
+// ================= HELPERS =================
+
+// retry logic
+async function fetchWithRetry(url, retries = 3) {
+  try {
+    return await api.get(url);
+  } catch (err) {
+    if (retries === 0) throw err;
+    console.log("🔁 Retry...", url);
+    return fetchWithRetry(url, retries - 1);
+  }
 }
 
+// جلب البيانات
+async function getData(symbol, interval = "15m", limit = 200) {
+  try {
+    const res = await fetchWithRetry(
+      `/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    );
 
+    return res.data.map(c => ({
+      time: c[0],
+      open: +c[1],
+      high: +c[2],
+      low: +c[3],
+      close: +c[4],
+      volume: +c[5]
+    }));
+  } catch (err) {
+    console.error(`❌ Error fetching ${symbol}:`, err.message);
+    return [];
+  }
+}
+
+// ================= ROUTES =================
 
 app.use("/api", convertRoute);
 app.use("/api/testnet", testnetRoutes);
 
-
-
-
-// تشغيل البوت
-run(SYMBOLS);
-
-
-
-// ================= SIGNALS =================
-app.get("/signals", async (req, res) => {
-  let results = [];
-
-  for (let symbol of SYMBOLS) {
-    const data = await getData(symbol);
-    const analysis = generateSignal(data);
-
-    results.push({
-      symbol,
-      ...analysis
-    });
-  }
-
-  res.json(results);
+// Health check (مهم ل Render)
+app.get("/", (req, res) => {
+  res.send("🚀 API is running");
 });
 
+// ================= SIGNALS =================
 
+app.get("/signals", async (req, res) => {
+  try {
+    const results = await Promise.all(
+      SYMBOLS.map(async (symbol) => {
+        const data = await getData(symbol);
+        const analysis = generateSignal(data);
+
+        return {
+          symbol,
+          ...analysis
+        };
+      })
+    );
+
+    res.json(results);
+  } catch (err) {
+    console.error("❌ Signals error:", err.message);
+    res.status(500).json({ error: "Failed to fetch signals" });
+  }
+});
+
+// ================= BACKTEST =================
 
 app.get("/replay", async (req, res) => {
   try {
     const symbol = req.query.symbol || "BTCUSDT";
     const interval = req.query.interval || "15m";
 
-    const data = await getData(symbol, interval, 1000); // بيانات تاريخية أوسع
+    const data = await getData(symbol, interval, 1000);
     const result = replayBacktest(data);
 
     res.json(result);
   } catch (err) {
+    console.error("❌ Replay error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ================= SIGNAL REPLAY =================
 
+app.get("/signals-replay", async (req, res) => {
+  try {
+    const symbol = req.query.symbol || "BTCUSDT";
+    const interval = req.query.interval || "15m";
 
+    const data = await getData(symbol, interval, 1000);
+    const signals = replaySignals(data);
 
-mongoose.connect('mongodb+srv://abdelbassetelhajiri02:abdelbassetA11@cluster0.rdkbbev.mongodb.net/biolink?retryWrites=true&w=majority&appName=Cluster0');
+    res.json({
+      total: signals.length,
+      signals
+    });
 
+  } catch (err) {
+    console.error("❌ Signals replay error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.use('/api/auth', require('./routes/auth'));
+// ================= START BOT =================
 
+// مهم: ما تخليش البوت يضرب Render idle
+setTimeout(() => {
+  run(SYMBOLS);
+}, 5000);
 
+// ================= START SERVER =================
 
-
-
-// تشغيل السيرفر
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
+const APP_URL = process.env.APP_URL;
 
-
-
-
-
-
-
-
-
-
-
-
-/*
-const express = require("express");
-const axios = require("axios");
-const cors = require("cors");
-const mongoose = require('mongoose');
-const { generateSignal } = require("./strategy");
-const { runBacktest } = require("./backtest");
-
-
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-const PORT = process.env.PORT || 5000;
-
-mongoose.connect('mongodb+srv://abdelbassetelhajiri02:abdelbassetA11@cluster0.rdkbbev.mongodb.net/biolink?retryWrites=true&w=majority&appName=Cluster0');
-
-const SYMBOLS = ["BTCUSDT","ETHUSDT","SOLUSDT"];
-
-async function getData(symbol) {
-  const res = await axios.get(
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=200`
-  );
-
-  return res.data.map(c => ({
-    open: parseFloat(c[1]),
-    high: parseFloat(c[2]),
-    low: parseFloat(c[3]),
-    close: parseFloat(c[4]),
-    volume: parseFloat(c[5])
-  }));
+if (APP_URL) {
+  setInterval(async () => {
+    try {
+      await axios.get(APP_URL);
+      console.log("🔄 Self ping sent");
+    } catch (err) {
+      console.log("❌ Self ping failed:", err.message);
+    }
+  }, 10 * 60 * 1000); // كل 10 دقائق
 }
 
 
-app.get("/backtest", async (req, res) => {
-  const symbol = req.query.symbol || "BTCUSDT";
-  const interval = req.query.interval || "15m";
-  const limit = req.query.limit || 500;
-
-  const response = await axios.get(
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-  );
-
-  const data = response.data.map(c => ({
-    open: +c[1],
-    high: +c[2],
-    low: +c[3],
-    close: +c[4],
-    volume: +c[5]
-  }));
-
-  const result = runBacktest(data);
-
-  res.json(result);
-});
 
 
 
-app.get("/signals", async (req, res) => {
-  let results = [];
-
-  for (let symbol of SYMBOLS) {
-    const data = await getData(symbol);
-    const analysis = generateSignal(data);
-
-    results.push({
-      symbol,
-      ...analysis
-    });
-  }
-
-  res.json(results);
-});
-
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/profile', require('./routes/profile'));
 
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});    
-*/
 
 

@@ -53,7 +53,114 @@ async function marketOrder(symbol, side, quantity) {
 }
 
 
-module.exports = { getAccount, marketOrder };
+//جديد ل pt limit order
+
+async function takeProfitOrder(symbol, quantity, takeProfitPrice) {
+  const timestamp = await getServerTime();
+
+  const recvWindow = 5000;
+
+  const query = 
+    `symbol=${symbol}` +
+    `&side=SELL` +
+    `&type=LIMIT` +
+    `&timeInForce=GTC` +
+    `&price=${takeProfitPrice}` +
+    `&quantity=${quantity}` +
+    `&timestamp=${timestamp}` +
+    `&recvWindow=${recvWindow}`;
+
+  const signature = sign(query);
+
+  try {
+    const res = await axios.post(
+      `${BASE_URL}/api/v3/order?${query}&signature=${signature}`,
+      null,
+      { headers: { "X-MBX-APIKEY": API_KEY } }
+    );
+
+    console.log("✅ TP order created:", res.data);
+    return res.data;
+
+  } catch (err) {
+    console.log("❌ ERROR:", err.response?.data || err.message);
+  }
+}
+/*
+async function takeProfitOrder(symbol, quantity, takeProfitPrice) {
+  const timestamp = await getServerTime();
+
+  const recvWindow = 5000;
+
+  const query = 
+    `symbol=${symbol}` +
+    `&side=SELL` +
+    `&type=TAKE_PROFIT_MARKET` +
+    `&stopPrice=${takeProfitPrice}` +
+    `&quantity=${quantity}` +
+    `&timestamp=${timestamp}` +
+    `&recvWindow=${recvWindow}`;
+
+  const signature = sign(query);
+
+  const res = await axios.post(
+    `${BASE_URL}/api/v3/order?${query}&signature=${signature}`,
+    null,
+    { headers: { "X-MBX-APIKEY": API_KEY } }
+  );
+
+  return res.data;
+}
+*/
+
+
+
+async function getMyTrades(symbol) {
+  const timestamp = await getServerTime();
+
+  const query = `symbol=${symbol}&timestamp=${timestamp}`;
+  const signature = sign(query);
+
+  const res = await axios.get(
+    `${BASE_URL}/api/v3/myTrades?${query}&signature=${signature}`,
+    { headers: { "X-MBX-APIKEY": API_KEY } }
+  );
+
+  return res.data;
+}
+
+async function getAllOrders(symbol) {
+  const timestamp = await getServerTime();
+
+  const query = `symbol=${symbol}&timestamp=${timestamp}`;
+  const signature = sign(query);
+
+  const res = await axios.get(
+    `${BASE_URL}/api/v3/allOrders?${query}&signature=${signature}`,
+    { headers: { "X-MBX-APIKEY": API_KEY } }
+  );
+
+  return res.data;
+}
+  
+
+
+
+async function getAllOpenOrders() {
+  const timestamp = await getServerTime();
+
+  const query = `timestamp=${timestamp}`;
+  const signature = sign(query);
+
+  const res = await axios.get(
+    `${BASE_URL}/api/v3/openOrders?${query}&signature=${signature}`,
+    { headers: { "X-MBX-APIKEY": API_KEY } }
+  );
+
+  return res.data;
+}
+
+module.exports = { getAccount, marketOrder, takeProfitOrder, getMyTrades, getAllOrders, getAllOpenOrders };
 
 
 
