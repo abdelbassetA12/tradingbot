@@ -14,8 +14,8 @@ const convertRoute = require("./testnet/convert");
 const testnetRoutes = require("./testnet/routes");
 const { run } = require("./testnet/runner");
 
-// 👇 WebSocket module (اللي انشأت)
-const { startWS, getCandles } = require("./market/ws");
+// ✅ REST candles (IMPORTANT)
+const { getCandlesREST } = require("./market/getCandlesREST");
 
 const app = express();
 const server = http.createServer(app);
@@ -32,35 +32,19 @@ const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
 app.use("/api", convertRoute);
 app.use("/api/testnet", testnetRoutes);
 
-// Health check
+// ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
-  res.send("🚀 API is running");
+  res.send("🚀 API is running on Render");
 });
 
-// ================= SIGNALS (Hybrid: WS + fallback) =================
+// ================= SIGNALS =================
 app.get("/signals", async (req, res) => {
   try {
     const results = await Promise.all(
       SYMBOLS.map(async (symbol) => {
 
-        // 👇 نحاولو WebSocket أولاً
-        let data = getCandles(symbol.toLowerCase());
-
-        // fallback إلى REST إلا مازال ما كاينش data
-        if (!data.length) {
-          const response = await axios.get(
-            `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=15m&limit=200`
-          );
-
-          data = response.data.map(c => ({
-            time: c[0],
-            open: +c[1],
-            high: +c[2],
-            low: +c[3],
-            close: +c[4],
-            volume: +c[5]
-          }));
-        }
+        // ✅ REST ONLY (no WS)
+        const data = await getCandlesREST(symbol);
 
         const analysis = generateSignal(data);
 
@@ -141,14 +125,14 @@ app.get("/signals-replay", async (req, res) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
-  // ================= SELF PING =================
+  // ================= SELF PING (Render keep alive) =================
   const APP_URL = process.env.APP_URL;
 
   if (APP_URL) {
     setInterval(async () => {
       try {
         await axios.get(APP_URL);
-        console.log("🔄 Self ping sent");
+        console.log("🔄 Self ping OK");
       } catch (err) {
         console.log("❌ Self ping failed:", err.message);
       }
@@ -157,11 +141,7 @@ server.listen(PORT, () => {
 
   // ================= BOT START =================
   setTimeout(() => {
+    console.log("🤖 Bot starting...");
     run(SYMBOLS);
-  }, 5000);
-
-  // ================= START WEBSOCKET =================
-  startWS("btcusdt", "15m");
-  startWS("ethusdt", "15m");
-  startWS("solusdt", "15m");
+  }, 15000); // ⬅️ مهم: تأخير باش Render يستقر
 });
