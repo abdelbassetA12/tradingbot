@@ -20,8 +20,12 @@ async function process(symbol, candles) {
       console.error("⚠️ لا يوجد رصيد");
       return;
     }
-
+    try {
     const exchangeInfo = await axios.get("https://testnet.binance.vision/api/v3/exchangeInfo");
+  } catch (err) {
+  console.error("❌ exchangeInfo:", err.message);
+  return;
+}
     const pairInfo = exchangeInfo.data.symbols.find(s => s.symbol === symbol);
 
     const lotFilter = pairInfo.filters.find(f => f.filterType === "LOT_SIZE");

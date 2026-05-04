@@ -23,20 +23,27 @@ async function getServerTime() {
 
 // ===== GET account =====
 async function getAccount() {
-  const timestamp = await getServerTime();
-  const query = `timestamp=${timestamp}`;
-  const signature = sign(query);
+  try {
+    const timestamp = await getServerTime();
+    const query = `timestamp=${timestamp}`;
+    const signature = sign(query);
 
-  const res = await axios.get(
-    `${BASE_URL}/api/v3/account?${query}&signature=${signature}`,
-    { headers: { "X-MBX-APIKEY": API_KEY } }
-  );
+    const res = await axios.get(
+      `${BASE_URL}/api/v3/account?${query}&signature=${signature}`,
+      { headers: { "X-MBX-APIKEY": API_KEY } }
+    );
 
-  return res.data;
+    return res.data;
+
+  } catch (err) {
+    console.error("❌ getAccount:", err.response?.data || err.message);
+    return null;
+  }
 }
 
 // ===== MARKET ORDER =====
 async function marketOrder(symbol, side, quantity) {
+   try {
   const timestamp = await getServerTime(); // ← الآن معرفة
 
   const recvWindow = 5000; // 5 ثواني
@@ -50,6 +57,10 @@ async function marketOrder(symbol, side, quantity) {
   );
 
   return res.data;
+    } catch (err) {
+    console.error("❌ getAccount:", err.response?.data || err.message);
+    return null;
+  }
 }
 
 
@@ -116,6 +127,7 @@ async function takeProfitOrder(symbol, quantity, takeProfitPrice) {
 
 
 async function getMyTrades(symbol) {
+   try {
   const timestamp = await getServerTime();
 
   const query = `symbol=${symbol}&timestamp=${timestamp}`;
@@ -127,9 +139,14 @@ async function getMyTrades(symbol) {
   );
 
   return res.data;
+    } catch (err) {
+    console.error("❌ getAccount:", err.response?.data || err.message);
+    return null;
+  }
 }
 
 async function getAllOrders(symbol) {
+   try {
   const timestamp = await getServerTime();
 
   const query = `symbol=${symbol}&timestamp=${timestamp}`;
@@ -141,12 +158,17 @@ async function getAllOrders(symbol) {
   );
 
   return res.data;
+    } catch (err) {
+    console.error("❌ getAccount:", err.response?.data || err.message);
+    return null;
+  }
 }
   
 
 
 
 async function getAllOpenOrders() {
+   try {
   const timestamp = await getServerTime();
 
   const query = `timestamp=${timestamp}`;
@@ -158,6 +180,10 @@ async function getAllOpenOrders() {
   );
 
   return res.data;
+     } catch (err) {
+    console.error("❌ getAccount:", err.response?.data || err.message);
+    return null;
+  }
 }
 
 module.exports = { getAccount, marketOrder, takeProfitOrder, getMyTrades, getAllOrders, getAllOpenOrders };

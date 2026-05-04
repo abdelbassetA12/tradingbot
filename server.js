@@ -17,6 +17,14 @@ const { run } = require("./testnet/runner");
 // ✅ REST candles (IMPORTANT)
 const { getCandlesREST } = require("./market/getCandlesREST");
 
+process.on("uncaughtException", (err) => {
+  console.error("💥 UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("💥 UNHANDLED REJECTION:", reason);
+});
+
 const app = express();
 const server = http.createServer(app);
 
