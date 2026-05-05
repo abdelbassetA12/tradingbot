@@ -39,12 +39,13 @@ function startWS(symbol = "btcusdt", interval = "15m") {
   });
 
   ws.on("close", () => {
-    console.log(`🔴 Reconnecting ${symbol}...`);
+    
+    console.log(`[WS:${symbol}] 🔴 Reconnecting...`);
     setTimeout(() => startWS(symbol, interval), 3000);
   });
 
   ws.on("error", (err) => {
-    console.log("❌ WS error:", err.message);
+    console.log(`[WS:${symbol}] ❌`, err.message);
   });
 }
 

@@ -9,10 +9,7 @@ async function getData(symbol) {
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=200`
        
   );
-} catch (err) {
-  console.error("❌ Info:", err.message);
-  return;
-}
+
   return res.data.map(c => ({
     time: c[0],
     open: +c[1],
@@ -20,6 +17,10 @@ async function getData(symbol) {
     low: +c[3],
     close: +c[4]
   }));
+   } catch (err) {
+    console.error(`[RUNNER_GET_DATA:${symbol}] ❌`, err.response?.data || err.message);
+    return [];
+  }
 }
 
 async function run(symbols = ["BTCUSDT"]) {

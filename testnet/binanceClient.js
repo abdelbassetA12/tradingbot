@@ -36,7 +36,8 @@ async function getAccount() {
     return res.data;
 
   } catch (err) {
-    console.error("❌ getAccount:", err.response?.data || err.message);
+   
+    console.error("[BINANCE_GET_ACCOUNT] ❌", err.response?.data || err.message);
     return null;
   }
 }
@@ -58,7 +59,7 @@ async function marketOrder(symbol, side, quantity) {
 
   return res.data;
     } catch (err) {
-    console.error("❌ getAccount:", err.response?.data || err.message);
+   console.error("[BINANCE_MARKET_ORDER] ❌", err.response?.data || err.message);
     return null;
   }
 }
@@ -94,7 +95,7 @@ async function takeProfitOrder(symbol, quantity, takeProfitPrice) {
     return res.data;
 
   } catch (err) {
-    console.log("❌ ERROR:", err.response?.data || err.message);
+    console.log("[TAKE_PROFIT] ❌", err.response?.data || err.message);
   }
 }
 /*
@@ -140,7 +141,7 @@ async function getMyTrades(symbol) {
 
   return res.data;
     } catch (err) {
-    console.error("❌ getAccount:", err.response?.data || err.message);
+    console.error("[BINANCE_TRADES] ❌", err.response?.data || err.message);
     return null;
   }
 }
@@ -159,7 +160,7 @@ async function getAllOrders(symbol) {
 
   return res.data;
     } catch (err) {
-    console.error("❌ getAccount:", err.response?.data || err.message);
+   console.error("[BINANCE_ORDERS] ❌", err.response?.data || err.message);
     return null;
   }
 }
@@ -181,7 +182,7 @@ async function getAllOpenOrders() {
 
   return res.data;
      } catch (err) {
-    console.error("❌ getAccount:", err.response?.data || err.message);
+    console.error("[BINANCE_OPEN_ORDERS] ❌", err.response?.data || err.message);
     return null;
   }
 }

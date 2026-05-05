@@ -16,7 +16,8 @@ async function getCandlesREST(symbol) {
     }));
 
   } catch (err) {
-    console.error("❌ getCandlesREST:", err.message);
+   
+    console.error("[CANDLES_REST] ❌ Error:", err.response?.data || err.message);
     return []; // 🔥 مهم: ما ترجعش crash
   }
 }

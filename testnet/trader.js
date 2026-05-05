@@ -23,7 +23,8 @@ async function process(symbol, candles) {
     try {
     const exchangeInfo = await axios.get("https://testnet.binance.vision/api/v3/exchangeInfo");
   } catch (err) {
-  console.error("❌ exchangeInfo:", err.message);
+
+  console.error(`[EXCHANGE_INFO:${symbol}] ❌`, err.response?.data || err.message);
   return;
 }
     const pairInfo = exchangeInfo.data.symbols.find(s => s.symbol === symbol);
