@@ -3,7 +3,7 @@ const axios = require("axios");
 async function getCandlesREST(symbol) {
   try {
     const res = await axios.get(
-      `https://morning-glade-0ee9.elhajiriabdelbasset2020.workers.dev?symbol=${symbol.toUpperCase()}&interval=15m&limit=200`
+      `https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=15m&limit=200`
     );
 
     return res.data.map(c => ({

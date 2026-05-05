@@ -1,8 +1,8 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-//https://testnet.binance.vision 
-const BASE_URL = "https://royal-mouse-956f.elhajiriabdelbasset2020.workers.dev";
+
+const BASE_URL = "https://testnet.binance.vision ";
 
 const API_KEY = process.env.BINANCE_KEY;
 const SECRET = process.env.BINANCE_SECRET;
