@@ -75,7 +75,7 @@ app.get("/replay", async (req, res) => {
     const interval = req.query.interval || "15m";
 
     const data = await axios.get(
-      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
+      `https://morning-glade-0ee9.elhajiriabdelbasset2020.workers.dev?symbol=${symbol}&interval=${interval}&limit=1000`
     );
 
     const formatted = data.data.map(c => ({
@@ -104,7 +104,7 @@ app.get("/signals-replay", async (req, res) => {
     const interval = req.query.interval || "15m";
 
     const data = await axios.get(
-      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
+      `https://morning-glade-0ee9.elhajiriabdelbasset2020.workers.dev?symbol=${symbol}&interval=${interval}&limit=1000`
     );
 
     const formatted = data.data.map(c => ({
